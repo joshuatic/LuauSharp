@@ -71,7 +71,7 @@ class TestClass
     
     public static void TestNull(object d, string s) => Console.WriteLine("Null parameters! " + s);
     
-    public string Name;
+    public string? Name;
     public int Version { get; private set; } = 1;
     
     public TestClass(){}
