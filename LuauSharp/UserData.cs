@@ -1,3 +1,5 @@
+#nullable disable
+
 using System.ComponentModel;
 using System.Dynamic;
 using System.Reflection;
@@ -621,3 +623,5 @@ public unsafe class UserData : IDisposable
 
     public void Dispose() => typeHandles.ForEach(x => x.Free());
 }
+
+#nullable restore
