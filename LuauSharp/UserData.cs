@@ -37,13 +37,6 @@ public unsafe class UserData : IDisposable
         return handle.Target as Delegate;
     }
 
-    private static object? GetObjectFromLua(Luau.lua_State* state, int index, int tag)
-    {
-        IntPtr ptr = Luau.lua_tolightuserdatatagged(state, index, tag);
-        if (ptr == IntPtr.Zero) return null;
-        return GCHandle.FromIntPtr(ptr).Target;
-    }
-
     internal static object? GetLuaValue(Luau.lua_State* state, int index, int tag = 0)
     {
         if (Luau.lua_isnil(state, index))
