@@ -3,11 +3,18 @@
   <PropertyGroup>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+
+    <!-- keep your TFMs exactly as-is -->
     <TargetFrameworks>net8.0;net10.0;netstandard2.1;net481</TargetFrameworks>
+
     <LangVersion>11</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- silence EOL framework warnings (net7 tests, future-proofing) -->
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
   </PropertyGroup>
 
+  <!-- native libs folders -->
   <ItemGroup>
     <Folder Include="libs\android_arm64-v8a\" />
     <Folder Include="libs\linux_x64\" />
@@ -16,15 +23,18 @@
     <Folder Include="libs\win_x64\" />
   </ItemGroup>
 
+  <!-- legacy .NET Framework compat -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net481'">
     <Reference Include="netstandard" />
     <Reference Include="System.Net.Http" />
   </ItemGroup>
 
+  <!-- needed for dynamic / reflection stuff -->
   <ItemGroup>
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
   </ItemGroup>
 
+  <!-- platform defines -->
   <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
     <DefineConstants>MSVC</DefineConstants>
   </PropertyGroup>
