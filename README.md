@@ -206,26 +206,28 @@ public enum MyEnum
 
 ## Building
 
-Building the Luau environment can be tricky, but once you build luau, it should be simple from there.
+Building the Luau environment is streamlined through the use of a native bridge. **LuauSharp** utilizes [**LuauShim**](https://github.com/joshuatic/LuauShim) to handle the complexities of cross-language communication.
 
-To build Luau, you must do the following to the [`CMakeLists.txt`](https://github.com/luau-lang/luau/blob/master/CMakeLists.txt):
+### 1. Build the Native Shim
+Instead of manually modifying Luau's core source code, use the shim to generate the necessary binaries:
+1. Clone the [LuauShim](https://github.com/joshuatic/LuauShim) repository.
+2. Build the project using **CLion** or **CMake**.
+   - This automatically handles `extern "C"` wrapping.
+   - It manages `__declspec(dllexport)` for MSVC/Windows builds to prevent symbol mangling.
+   - It ensures the correct `-fPIC` options are applied for position-independent code.
 
-1. Rewrite the list to make `Luau.VM` and `Luau.Compiler` `SHARED` libraries.
-2. Enable `__declspec(dllexport)` for MSVC builds (to avoid mangling on windows)
-    - You should use MSVC when building for windows
-    - Don't forget that you still need `extern "C"`
-3. Append `-fPIC` for `LUAU_OPTIONS`
+### 2. Include the Binaries
+Once the build is complete, you will have a `LuauShim.dll` (Windows) or `.so` (Linux/Unix).
+- **Standard .NET:** Place the binary in your execution directory (next to your `.dll`/`.exe`).
+- **Unity:** Add the binary to your `Assets/Plugins` folder.
+- **Advanced:** Use [LoadLibrary](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-loadlibrarya) if you need to load the shim from a non-standard path at runtime.
 
-Then you build normally with CMake. Luau describes how to build the project.
-
-Once you have the native binaries, you can include them in your application however you please. For dotnet, you may like [`LoadLibrary(string lpFileName)`](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-loadlibrarya), but for Unity, all you should have to do is add it to your project as a Plugin.
-
-After including the binaries, simply build the LuauSharp project with whatever dotnet tool you choose. If you are familiar with building dotnet projects, this should be easy, since there are few managed dependencies.
-
-> [!NOTE]
->
-> LuauSharp uses dynamic objects ([`ExpandoObject`](https://learn.microsoft.com/en-us/dotnet/api/system.dynamic.expandoobject)) to function. If your target platform does not support this, then LuauSharp will fail.
-
+### 3. Build LuauSharp
+After the native binaries are in place, simply build the **LuauSharp** project using the dotnet CLI:
+```bash
+dotnet build --configuration Release
+```
+> [!NOTE] Dynamic Object Support LuauSharp utilizes ExpandoObject to provide a flexible API. If your target platform (e.g., certain AOT-restricted environments) does not support dynamic objects, LuauSharp will fail.
 ## License
 
 As its parent project, LuauSharp is distributed under the terms of the [MIT License](https://github.com/TigersUniverse/LuauSharp/blob/main/LICENSE).

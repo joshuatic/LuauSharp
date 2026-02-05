@@ -1,105 +1,45 @@
-﻿using System.Runtime.InteropServices;
-
-namespace LuauSharp;
-
-public class VM : IDisposable
+﻿public class VM : IDisposable
 {
-    private unsafe Luau.lua_State* state;
-    public UserData UserData { get; }
-    private IntPtr optionsPtr;
-    private bool loaded;
+    public IntPtr L { get; private set; }
+    private bool _disposed = false;
 
-    private Action<object> print;
-    private Action<object> warn;
-    private Action<object> error;
-    
-    public VM(Action<object> print, Action<object> warn, Action<object> error)
+    public VM()
     {
-        this.print = print;
-        this.warn = warn;
-        this.error = error;
-        Luau.lua_CompileOptions options = new Luau.lua_CompileOptions();
-        optionsPtr = Marshal.AllocHGlobal(Marshal.SizeOf(options));
-        Marshal.StructureToPtr(options, optionsPtr, false);
-        unsafe
+        L = Luau.luaL_newstate();
+        if (L == IntPtr.Zero)
         {
-            state = Luau.luaL_newstate();
-            UserData = new UserData(state);
-            Luau.lua_setsafeenv(state, Luau.LUA_ENVIRONINDEX, 1);
-            Luau.luaL_openlibs(state);
+            throw new InvalidOperationException("Failed to initialize Luau VM: Native pointer is null.");
         }
-        UserData.PushFunction("print", print);
-        UserData.PushFunction("warn", warn);
-        UserData.PushFunction("error", error);
+
+        Luau.luaL_openlibs(L);
     }
 
-    public byte[] Compile(string sourceCode)
+    public void InspectStack()
     {
-        IntPtr size = (IntPtr) sourceCode.Length;
-        IntPtr outSize;
-        IntPtr bytecodePtr = Luau.luau_compile(sourceCode, size, optionsPtr, out outSize);
-        if (bytecodePtr == IntPtr.Zero)
+        UserData.ProcessStackItem(L, -1);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
         {
-            Marshal.FreeHGlobal(optionsPtr);
-            throw new Exception("Error compiling Lua source code");
-        }
-        byte[] bytecode = new byte[outSize.ToInt32()];
-        Marshal.Copy(bytecodePtr, bytecode, 0, bytecode.Length);
-        Marshal.FreeHGlobal(bytecodePtr);
-        return bytecode;
-    }
-
-    private unsafe int Load(string name, byte[] compiled)
-    {
-        if (loaded)
-            throw new Exception("Cannot load when already loaded! Please dispose this VM and create a new one");
-        int loadResult = Luau.luau_load(state, name, compiled, compiled.Length, 0);
-        if (loadResult != 0)
-        {
-            error.Invoke("Error loading bytecode");
-            Luau.lua_close(state);
-            Marshal.FreeHGlobal(optionsPtr);
-        }
-        loaded = loadResult == 0;
-        return loadResult;
-    }
-
-    public bool DoCompiled(string name, byte[] data) => Load(name, data) == 0;
-
-    public bool DoText(string name, string data)
-    {
-        // Compile the code
-        byte[] bytecode = Compile(data);
-        // Load the compiled bytecode
-        return Load(name, bytecode) == 0;
-    }
-
-    public bool DoFile(string pathToFile)
-    {
-        if (!File.Exists(pathToFile))
-            throw new FileNotFoundException();
-        return DoText(Path.GetFileName(pathToFile), File.ReadAllText(pathToFile));
-    }
-
-    public void Execute()
-    {
-        if (!loaded)
-            throw new Exception("Cannot execute when not loaded!");
-        unsafe
-        {
-            // Execute the loaded bytecode
-            int runResult = Luau.lua_pcall(state, 0, Luau.LUA_MULTRET, 0);
-            if (runResult == 0) return;
-            error.Invoke(UserData.ReadString(-1) ?? "unknown error");
+            if (L != IntPtr.Zero)
+            {
+                Luau.lua_close(L);
+                L = IntPtr.Zero;
+            }
+            _disposed = true;
         }
     }
 
     public void Dispose()
     {
-        unsafe
-        {
-            Luau.lua_close(state);
-            Marshal.FreeHGlobal(optionsPtr);
-        }
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    ~VM()
+    {
+        Dispose(false);
     }
 }
